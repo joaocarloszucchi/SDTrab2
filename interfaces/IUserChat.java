@@ -1,0 +1,6 @@
+package interfaces;
+
+public interface IUserChat extends java.rmi.Remote {
+    // server calls it remotelly to send a message
+    public void deliverMsg(String senderName, String msg);
+}
