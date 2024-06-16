@@ -17,6 +17,15 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     JButton createRoomButton;
     JButton refreshButton;
 
+    private JFrame mainFrame;
+    private JFrame roomFrame;
+    private JTextArea chatArea;
+    private JTextField chatInput;
+    private JButton sendButton;
+    private JButton exitButton;
+
+    private IRoomChat currentRoom;
+
     public UserChat(String name) throws RemoteException {
         this.name = name;
         try{
@@ -30,7 +39,27 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     
     @Override
     public void deliverMsg(String senderName, String msg) throws RemoteException {
-        System.out.println(senderName + ": " + msg);
+        if (chatArea != null){
+            if (isRoomClosed(msg)){
+                synchronized (this) {
+                    if (currentRoom != null) {
+                        String closedRoomName = currentRoom.getRoomName();
+                        roomList.remove(closedRoomName);
+                        roomListModel.removeElement(closedRoomName);
+                    }
+                    currentRoom = null;
+                    roomFrame.setVisible(false);
+                    mainFrame.setVisible(true);
+                }
+            }
+            else{
+                chatArea.append(senderName + ": " + msg + "\n");
+            }
+        }
+    }
+
+    private boolean isRoomClosed(String msg){
+        return msg.endsWith(" Room closed by server.");
     }
 
     public String getUsrName() {
@@ -39,10 +68,10 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
 
     public void initializeGUI() {
         try {
-            JFrame frame = new JFrame("Chat Client: " + name);
-            frame.setSize(400, 300);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setLocationRelativeTo(null);
+            mainFrame = new JFrame("Chat Client: " + name);
+            mainFrame.setSize(400, 300);
+            mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            mainFrame.setLocationRelativeTo(null);
 
             roomListModel = new DefaultListModel<>();
             rooms = new JList<>(roomListModel);
@@ -57,22 +86,23 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
             buttonPanel.add(createRoomButton);
             buttonPanel.add(refreshButton);
 
-            frame.add(roomScrollPane, BorderLayout.CENTER);
-            frame.add(buttonPanel, BorderLayout.SOUTH);
+            mainFrame.add(roomScrollPane, BorderLayout.CENTER);
+            mainFrame.add(buttonPanel, BorderLayout.SOUTH);
 
             joinRoomButton.addActionListener(e -> joinRoom(server, rooms.getSelectedValue()));
             createRoomButton.addActionListener(e -> createRoom(server));
             refreshButton.addActionListener(e -> loadRooms(server, roomListModel));
 
-            frame.addWindowListener(new WindowAdapter() {
+            mainFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
-                    // Optionally handle window close event
+                    leaveRoom();
+                    return;
                 }
             });
 
             loadRooms(server, roomListModel);
-            frame.setVisible(true);
+            mainFrame.setVisible(true);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -93,8 +123,9 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     private void joinRoom(IServerChat server, String selectedRoom) {
         if (selectedRoom != null) {
             try {
-                IRoomChat room = (IRoomChat) Naming.lookup("//localhost:2020/" + selectedRoom);
-                room.joinRoom(name, this);
+                currentRoom  = (IRoomChat) Naming.lookup("//localhost:2020/" + selectedRoom);
+                currentRoom.joinRoom(name, this);
+                showRoomFrame(selectedRoom);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -109,6 +140,73 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
                 loadRooms(server, roomListModel);
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void showRoomFrame(String roomName) {
+        if (roomFrame == null) {
+            roomFrame = new JFrame("Chat Room: " + roomName);
+            roomFrame.setSize(500, 400);
+            roomFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            roomFrame.setLocationRelativeTo(null);
+
+            chatArea = new JTextArea();
+            chatArea.setEditable(false);
+            JScrollPane chatScrollPane = new JScrollPane(chatArea);
+
+            chatInput = new JTextField(30);
+            sendButton = new JButton("Send");
+            exitButton = new JButton("Exit");
+
+            JPanel inputPanel = new JPanel();
+            inputPanel.add(chatInput);
+            inputPanel.add(sendButton);
+            inputPanel.add(exitButton);
+
+            roomFrame.add(chatScrollPane, BorderLayout.CENTER);
+            roomFrame.add(inputPanel, BorderLayout.SOUTH);
+
+            sendButton.addActionListener(e -> sendMessage());
+
+            exitButton.addActionListener(e -> leaveRoom());
+
+            roomFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    leaveRoom();
+                }
+            });
+        }
+
+        roomFrame.setTitle("Chat Room: " + roomName);
+        chatArea.setText("");
+        mainFrame.setVisible(false);
+        roomFrame.setVisible(true);
+    }
+
+    private void sendMessage() {
+        String message = chatInput.getText().trim();
+        if (!message.isEmpty()) {
+            try {
+                currentRoom.sendMsg(name, message);
+                chatInput.setText("");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private synchronized void leaveRoom() {
+        if (currentRoom != null) {
+            try {
+                currentRoom.leaveRoom(name);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                currentRoom = null;
+                roomFrame.setVisible(false);
+                mainFrame.setVisible(true);
             }
         }
     }

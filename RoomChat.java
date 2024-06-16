@@ -22,19 +22,19 @@ public class RoomChat extends UnicastRemoteObject implements IRoomChat {
     @Override
     public synchronized void joinRoom(String usrName, IUserChat user) throws RemoteException{
         userList.put(usrName, user);
-        sendMsg("SYSTEM: ", usrName + " has joined the room.");
+        sendMsg("SYSTEM ", usrName + " has joined the room.");
     }
 
     @Override
     public synchronized void leaveRoom(String usrName) throws RemoteException{
         if (userList.remove(usrName) != null) {
-            sendMsg("SYSTEM: ", usrName + " has left the room.");
+            sendMsg("SYSTEM ", usrName + " has left the room.");
         }
     }
 
     @Override
     public synchronized void closeRoom() throws RemoteException{
-        sendMsg("SYSTEM: ", " Room closed by server.");
+        sendMsg("SYSTEM ", " Room closed by server.");
         userList.clear();
     }
 
