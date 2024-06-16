@@ -1,5 +1,3 @@
-package interfaces;
-
 import java.rmi.RemoteException;
 
 public interface IRoomChat extends java.rmi.Remote {

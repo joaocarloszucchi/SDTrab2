@@ -1,8 +1,5 @@
-package classes;
 import java.util.HashMap;
 import java.util.Map;
-import interfaces.IRoomChat;
-import interfaces.IUserChat;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
