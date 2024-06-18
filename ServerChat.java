@@ -11,15 +11,19 @@ import java.awt.*;
 public class ServerChat extends UnicastRemoteObject implements IServerChat {
     private ArrayList<String> roomList;
     private Map<String, IRoomChat> rooms;
+    private String ip;
+    private String port;
 
     private DefaultListModel<String> roomListModel;
     private JList<String> roomListUI;
     private JButton refreshButton;
     private JButton closeRoomButton;
 
-    public ServerChat() throws RemoteException {
+    public ServerChat(String ip, String port) throws RemoteException {
         this.roomList = new ArrayList<>();
         this.rooms = new HashMap<>();
+        this.ip = ip;
+        this.port = port;
         initializeServer();
         initializeGUI();
     }
@@ -27,7 +31,7 @@ public class ServerChat extends UnicastRemoteObject implements IServerChat {
     private void initializeServer() {
         try {
             LocateRegistry.createRegistry(2020);
-            Naming.rebind("//localhost:2020/Servidor", this);
+            Naming.rebind("//" + ip + ":" + port + "/" + "Servidor", this); //"//localhost:2020/Servidor" 
             System.out.println("Server chat running...");
         } catch (Exception e) {
             e.printStackTrace();
@@ -49,7 +53,7 @@ public class ServerChat extends UnicastRemoteObject implements IServerChat {
                 newRoom = new RoomChat(roomName);
                 rooms.put(roomName, newRoom);
                 roomList.add(roomName);
-                Naming.rebind("//localhost:2020/" + roomName, newRoom);
+                Naming.rebind("//" + ip + ":" + port + "/" + roomName, newRoom);// "//localhost:2020/"
                 System.out.println("Added room " + roomName);
             } catch (RemoteException e) {
                 e.printStackTrace();
@@ -72,7 +76,7 @@ public class ServerChat extends UnicastRemoteObject implements IServerChat {
             rooms.remove(roomName);
             roomList.remove(roomName);
             try {
-                Naming.unbind("//localhost:2020/" + roomName);
+                Naming.unbind("//" + ip + ":" + port + "/" + roomName); //"//localhost:2020/"
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -138,7 +142,7 @@ public class ServerChat extends UnicastRemoteObject implements IServerChat {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                new ServerChat();
+                new ServerChat(args[0], args[1]);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }

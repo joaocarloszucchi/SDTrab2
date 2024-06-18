@@ -10,6 +10,8 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     private String name;
     private IServerChat server;
     ArrayList<String> roomList;
+    String ip;
+    String port;
 
     DefaultListModel<String> roomListModel;
     JList<String> rooms;
@@ -26,10 +28,12 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
 
     private IRoomChat currentRoom;
 
-    public UserChat(String name) throws RemoteException {
+    public UserChat(String name, String ip, String port) throws RemoteException {
         this.name = name;
+        this.ip = ip;
+        this.port = port;
         try{
-            server = (IServerChat) Naming.lookup("//localhost:2020/Servidor");
+            server = (IServerChat) Naming.lookup("//" + ip + ":" + port + "/" + "Servidor"); //"//localhost:2020/Servidor"
         } catch(Exception e){
             e.printStackTrace();
         }
@@ -123,7 +127,7 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     private void joinRoom(IServerChat server, String selectedRoom) {
         if (selectedRoom != null) {
             try {
-                currentRoom  = (IRoomChat) Naming.lookup("//localhost:2020/" + selectedRoom);
+                currentRoom  = (IRoomChat) Naming.lookup("//" + ip + ":" + port + "/" + selectedRoom); //"//localhost:2020/"
                 currentRoom.joinRoom(name, this);
                 showRoomFrame(selectedRoom);
             } catch (Exception e) {
@@ -214,7 +218,7 @@ public class UserChat extends UnicastRemoteObject implements IUserChat {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                new UserChat(args[0]);
+                new UserChat(args[0], args[1], args[2]);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
